@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { SubmitClaim } from '@/components/patient/SubmitClaim';
 import { PatientDashboard } from '@/components/patient/PatientDashboard';
 import { InsurerDashboard } from '@/components/insurer/InsurerDashboard';
+import { ClaimsProvider } from '@/hooks/useClaims';
 
 type PatientView = 'dashboard' | 'submit';
 
@@ -86,7 +87,9 @@ function Shell() {
 function App() {
   return (
     <AuthProvider>
-      <Shell />
+      <ClaimsProvider>
+        <Shell />
+      </ClaimsProvider>
     </AuthProvider>
   );
 }

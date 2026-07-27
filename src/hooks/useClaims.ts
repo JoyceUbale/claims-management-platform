@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Claim, ClaimFilters, ClaimStatus, ClaimUpdatePayload } from '@/types';
 import { seedClaims } from '@/data/seedClaims';
 
+const API_BASE = 'http://localhost:4000/api/claims';
 const STORAGE_KEY = 'claimflow.claims.v1';
 
-function loadClaims(): Claim[] {
+function loadLocalClaims(): Claim[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -12,21 +13,17 @@ function loadClaims(): Claim[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {
-    // ignore corrupted storage
+    // fallback
   }
   return seedClaims;
 }
 
-function persist(claims: Claim[]) {
+function persistLocal(claims: Claim[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(claims));
   } catch {
-    // ignore quota errors
+    // ignore quota error
   }
-}
-
-function genId(): string {
-  return 'clm-' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
 }
 
 export interface NewClaimInput {
@@ -37,50 +34,127 @@ export interface NewClaimInput {
   documentUrl: string | null;
 }
 
-export function useClaims() {
-  const [claims, setClaims] = useState<Claim[]>(() => loadClaims());
+interface ClaimsContextValue {
+  claims: Claim[];
+  loading: boolean;
+  addClaim: (input: NewClaimInput) => Promise<Claim>;
+  updateClaim: (id: string, patch: ClaimUpdatePayload) => Promise<void>;
+  getClaim: (id: string) => Claim | undefined;
+  refreshClaims: () => Promise<void>;
+}
+
+const ClaimsContext = createContext<ClaimsContextValue | null>(null);
+
+export function ClaimsProvider({ children }: { children: React.ReactNode }) {
+  const [claims, setClaims] = useState<Claim[]>(() => loadLocalClaims());
   const [loading, setLoading] = useState(true);
 
+  // Fetch claims from Node.js Express API on mount
+  const refreshClaims = useCallback(async () => {
+    try {
+      const res = await fetch(API_BASE);
+      if (res.ok) {
+        const data = (await res.json()) as Claim[];
+        setClaims(data);
+        persistLocal(data);
+      }
+    } catch {
+      // If backend is unreachable, keep local claims
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    persist(claims);
-    setLoading(false);
-  }, [claims]);
+    void refreshClaims();
+  }, [refreshClaims]);
 
-  const addClaim = useCallback((input: NewClaimInput): Claim => {
-    const claim: Claim = {
-      id: genId(),
-      name: input.name,
-      email: input.email,
-      claimAmount: input.claimAmount,
-      description: input.description,
-      documentUrl: input.documentUrl,
-      status: 'Pending',
-      submissionDate: new Date().toISOString(),
-      approvedAmount: null,
-      insurerComments: null,
-    };
-    setClaims((prev) => [claim, ...prev]);
-    return claim;
-  }, []);
+  const addClaim = useCallback(
+    async (input: NewClaimInput): Promise<Claim> => {
+      let createdClaim: Claim;
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+        if (res.ok) {
+          createdClaim = (await res.json()) as Claim;
+        } else {
+          throw new Error('API error');
+        }
+      } catch {
+        // Fallback for offline mode
+        createdClaim = {
+          id: 'clm-' + Math.random().toString(36).slice(2, 8),
+          name: input.name,
+          email: input.email,
+          claimAmount: input.claimAmount,
+          description: input.description,
+          documentUrl: input.documentUrl,
+          status: 'Pending',
+          submissionDate: new Date().toISOString(),
+          approvedAmount: null,
+          insurerComments: null,
+        };
+      }
 
-  const updateClaim = useCallback((id: string, patch: ClaimUpdatePayload) => {
-    setClaims((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              status: patch.status,
-              approvedAmount: patch.approvedAmount ?? c.approvedAmount,
-              insurerComments: patch.insurerComments ?? c.insurerComments,
-            }
-          : c,
-      ),
-    );
-  }, []);
+      setClaims((prev) => {
+        const next = [createdClaim, ...prev];
+        persistLocal(next);
+        return next;
+      });
+      return createdClaim;
+    },
+    [],
+  );
 
-  const getClaim = useCallback((id: string): Claim | undefined => claims.find((c) => c.id === id), [claims]);
+  const updateClaim = useCallback(
+    async (id: string, patch: ClaimUpdatePayload) => {
+      try {
+        await fetch(`${API_BASE}/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+      } catch {
+        // Fallback
+      }
 
-  return { claims, loading, addClaim, updateClaim, getClaim };
+      setClaims((prev) => {
+        const next = prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                status: patch.status,
+                approvedAmount: patch.approvedAmount ?? c.approvedAmount,
+                insurerComments: patch.insurerComments ?? c.insurerComments,
+              }
+            : c,
+        );
+        persistLocal(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const getClaim = useCallback((id: string) => claims.find((c) => c.id === id), [claims]);
+
+  const value = useMemo(
+    () => ({ claims, loading, addClaim, updateClaim, getClaim, refreshClaims }),
+    [claims, loading, addClaim, updateClaim, getClaim, refreshClaims],
+  );
+
+  return React.createElement(ClaimsContext.Provider, { value }, children);
+}
+
+export function useClaims(): ClaimsContextValue {
+  const ctx = useContext(ClaimsContext);
+  if (!ctx) {
+    throw new Error('useClaims must be used within a ClaimsProvider');
+  }
+  return ctx;
 }
 
 export function filterAndSortClaims(claims: Claim[], filters: ClaimFilters): Claim[] {

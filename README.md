@@ -1,93 +1,130 @@
-# ClaimFlow — Claims Management Platform
+<div align="center">
 
-A production-ready, minimal Claims Management Platform for **Patients** and **Insurers**.
+# ClaimFlow — Health Insurance Claims Management Platform
 
-- **Frontend:** React + TypeScript + Vite + Tailwind CSS + lucide-react
-- **Backend:** Node.js + Express + Mongoose (MongoDB)
-- **Persistence:** MongoDB via `MONGODB_URI`, with automatic in-memory seed fallback
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 
----
+**A modern, full-stack claims processing platform featuring dual-role portals for Patients and Insurers with real-time database synchronization.**
 
-## Features
-
-### Shared
-- Mock authentication header with one-click switch between **Patient View** and **Insurer View**
-- Pre-configured mock profiles: `patient@example.com` and `insurer@example.com`
-- Modern, fully responsive Tailwind UI with animations and micro-interactions
-
-### Patient Side
-- **Submit Claim** form: Name, Email, Claim Amount ($), Description, and document upload (Base64 image preview)
-- **My Claims dashboard**: card grid with status badges, submission dates, approved amount, and insurer comments
-- Summary stats (total claims, pending, total claimed, total approved) + search and status filter
-
-### Insurer Side
-- **Claims Review Queue**: responsive table (desktop) / cards (mobile) of all submitted claims
-- Client-side filters: status (All / Pending / Approved / Rejected), amount range, search, and date/amount sorting
-- **Review Drawer**: full claim details + document preview, Approve/Reject actions, approved amount input, and insurer comments
-
-### Backend API
-| Method | Endpoint | Description |
-| ------ | -------- | ----------- |
-| `GET`  | `/api/health` | Health check + active mode (mongodb/memory) |
-| `GET`  | `/api/claims?status=&min=&max=&sort=` | List claims with optional filters |
-| `GET`  | `/api/claims/:id` | Fetch a single claim |
-| `POST` | `/api/claims` | Submit a new claim |
-| `PATCH`| `/api/claims/:id` | Update status, approvedAmount, insurerComments |
-
-**Query params for `GET /api/claims`:**
-- `status` — `Pending` | `Approved` | `Rejected` | `All`
-- `min` / `max` — claim amount range (numbers)
-- `sort` — `newest` | `oldest` | `amount-high` | `amount-low`
-
-**Mongoose schema:** `name, email, claimAmount, description, documentUrl, status, submissionDate, approvedAmount, insurerComments` (plus Mongoose `id` virtual).
+</div>
 
 ---
 
-## Getting Started
+## 📌 Project Overview
+
+**ClaimFlow** streamlines the health insurance claim submission and review workflow. Designed with a startup-grade UI inspired by platforms like Linear and Vercel, it connects patients and insurance adjusters through dedicated role-based portals.
+
+* **Patient Portal**: Submit claim requests with attachments, monitor live status updates, and track individual claim histories.
+* **Insurer Portal**: Evaluate incoming claims, perform dynamic filtering and sorting, approve or reject claims with custom comments and adjust approved amounts.
+
+---
+
+## 🏗️ Architecture & Project Structure
+
+claimflow/
+├── server/                    # Node.js + Express Backend API
+│   ├── config/                # Database connection (MongoDB / Mongoose)
+│   ├── models/                # Claim schema & Mongoose models
+│   ├── routes/                # Express API routes (/api/claims)
+│   ├── package.json
+│   └── server.js / index.js   # Server entry point
+│
+├── src/                       # React + TypeScript Frontend
+│   ├── components/            # UI components (Patient & Insurer views)
+│   │   ├── patient/           # PatientDashboard, SubmitClaim
+│   │   ├── insurer/           # InsurerDashboard, ClaimsTable
+│   │   └── Header.tsx         # Responsive header & role switcher
+│   ├── context/               # AuthContext (Role management)
+│   ├── hooks/                 # Custom hooks (useClaims with Context API)
+│   ├── types/                 # TypeScript interfaces
+│   ├── App.tsx                # Main application wrapper
+│   └── main.tsx               # Application entry point
+│
+├── public/                    # Static assets
+└── package.json               # Frontend dependencies & scripts
+
+---
+
+## ✨ Features
+
+### 🧑 Patient Portal
+* **📊 Live Dashboard**: Metrics summary cards showing Total, Pending, Approved, and Rejected claims.
+* **📝 Claim Submission**: User-friendly form with inline validation, document links, and monetary input handling.
+* **⚡ Real-Time Sync**: Instant dashboard updates upon new claim submission without page refreshes.
+
+### 🏥 Insurer Portal
+* **📈 Analytics Dashboard**: Total review queue overview and aggregate statistics.
+* **🔍 Claims Management**: Filter claims by status (Pending/Approved/Rejected) and sort by date or amount.
+* **✅ Review Workflow**: Approve or reject claims with structured comments and custom approved settlement values.
+
+### 🛡️ Platform Highlights
+* **Shared Context Architecture**: Global state powered by React Context prevents data desynchronization across tabs.
+* **Dual Persistence**: Direct integration with MongoDB Atlas/Local DB with fallback local persistence.
+* **Responsive Layout**: Designed for mobile, tablet, and desktop screens.
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
-```bash
-npm install
-npm run dev      # Vite dev server (http://localhost:5173)
-npm run build    # production build
-```
+| Library | Purpose |
+| :--- | :--- |
+| **React 18** | UI Library |
+| **TypeScript** | Type safety and interfaces |
+| **Vite** | Fast frontend bundler |
+| **Tailwind CSS** | Styling and responsive design |
+| **Lucide React** | Modern vector icon set |
 
 ### Backend
-```bash
-cd server
-cp .env.example .env       # then edit MONGODB_URI (optional)
-npm install
-npm run dev                # starts Express on http://localhost:4000
-npm run seed               # optional: seed sample claims into MongoDB
-```
-
-### MongoDB connection
-Set `MONGODB_URI` in `server/.env`. If the URI is missing or unreachable, the API
-automatically falls back to an **in-memory seed dataset** so the platform stays
-fully functional for demos and local testing.
+| Library | Purpose |
+| :--- | :--- |
+| **Node.js & Express** | RESTful API server |
+| **MongoDB & Mongoose** | Database and ODM modeling |
+| **CORS / dotenv** | Cross-origin resource sharing & configuration |
 
 ---
 
-## Project Structure
-```
-src/
-  components/        React UI (patient, insurer, shared)
-  context/          Mock auth context
-  data/             Frontend seed data
-  hooks/            useClaims (CRUD + filtering)
-  lib/              formatting + helpers
-  types.ts          shared TypeScript types
-server/
-  src/
-    models/         Mongoose schema
-    routes/         Express REST routes
-    db.js           connection + fallback logic
-    memoryStore.js  in-memory fallback store
-    seedData.js     sample claims
-    server.js       Express app entry
-    seed.js         optional seeding script
+## 🚀 Getting Started
+
+### Prerequisites
+* **Node.js**: `v18.0.0` or higher
+* **npm**: `v9.0.0` or higher
+* **MongoDB**: Local MongoDB instance running on port `27017` or MongoDB Atlas URI
+
+---
+
+### 1. Backend Setup
+
+```bash
+# Navigate to the server folder
+cd server
+
+# Install dependencies
+npm install
 ```
 
-> The frontend ships with its own local-persistence layer so the UI is fully
-> interactive even without the backend running. Start the backend to enable the
-> REST API and shared MongoDB persistence.
+###  2. Frontend Setup
+
+```bash
+# Install frontend dependencies
+npm install
+
+# Start the Vite development server
+npm run dev
+# Frontend will run on http://localhost:5173
+```
+
+### 🔮 Future Improvements
+
+[ ] Automated OCR receipt scanning for invoice data extraction
+
+[ ] Role-based JWT authentication and password login
+
+[ ] Email notifications for patient updates upon review completion
+
+[ ] PDF summary report generation for approved claims
