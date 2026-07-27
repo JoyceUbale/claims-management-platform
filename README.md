@@ -106,6 +106,9 @@ cd server
 
 # Install dependencies
 npm install
+
+#Start server
+npm run dev
 ```
 
 ###  2. Frontend Setup
@@ -118,6 +121,7 @@ npm install
 npm run dev
 # Frontend will run on http://localhost:5173
 ```
+### 3. [LIVE DEMO](https://claims-management-platform-two.vercel.app)
 
 ### 🔮 Future Improvements
 
